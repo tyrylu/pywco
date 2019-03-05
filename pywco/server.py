@@ -48,18 +48,18 @@ class Server(Communicator):
             for task in pending:
                 task.cancel()
 
-    def answer(self, command, message={}):
-        message["command"] = command
+    def answer(self, command, **message):
+        self._add_command_to_message(command, message)
         wrap = Wrap(False, self._cur_client_id, message)
         self.send_queue.sync_q.put(wrap)
 
-    def send_message(self, command, client_id, message={}):
-        message["command"] = command
+    def send_message(self, command, client_id, **message):
+        self._add_command_to_message(command, message)
         wrap = Wrap(False, client_id, message)
         self.send_queue.sync_q.put(wrap)
 
-    def broadcast(self, command, message={}):
-        message["command"] = command
+    def broadcast(self, command, **message):
+        self._add_command_to_message(command, message)
         wrap = Wrap(True, None, message)
         self.send_queue.sync_q.put(wrap)
 

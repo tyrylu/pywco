@@ -25,8 +25,8 @@ class Client(Communicator):
             for task in pending:
                 task.cancel()
 
-    def send_message(self, command, message={}):
-        message["command"] = command
+    def send_message(self, command, **message):
+        self._add_command_to_message(command, message)
         self.send_queue.sync_q.put(message)
 
     async def producer_handler(self):

@@ -52,11 +52,18 @@ class Communicator:
         if command not in self.known_commands:
             log.warning(f"This command is not known {command}")
             return
-        del received["command"]
+        del received["pywco_command"]
         try:
             signal(command).send(self, **received)
         except Exception as e:
             log.exception(f"Error handling the {command} command.")
+
+    def _add_command_to_message(self, command, message):
+        if "pywco_command" in message:
+            raise AttributeError("pywco_command is reserved for pywco. Please use a different name.")
+
+        message["pywco_command"] = command
+        return message
 
     @abc.abstractmethod
     async def start_async_communication(self): pass
@@ -66,6 +73,7 @@ class Communicator:
 
     @abc.abstractmethod
     async def consumer_handler(self): pass
+
 
 """def command_handler(react_to):
     def wrap(func):
