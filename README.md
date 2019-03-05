@@ -2,7 +2,7 @@
 Python Websockets Communication library
 Made in Czechia :beer:
 
-It synchronizes the async websockets in python and provides a high level api for communication.
+It synchronizes the async websockets in python and provides a high level API for communication.
 
 Ideally what you throw in on one end like this:
 
