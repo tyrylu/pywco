@@ -48,7 +48,7 @@ class Communicator:
 
     def handle_message(self, message):
         received = msgpack.unpackb(message, encoding="utf-8")
-        command = self.known_commands(received["command"])
+        command = self.known_commands(received["pywco_command"])
         if command not in self.known_commands:
             log.warning(f"This command is not known {command}")
             return
