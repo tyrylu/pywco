@@ -12,4 +12,4 @@ clfs.append("Operating System :: MacOS :: MacOS X")
 clfs.append("Operating System :: POSIX :: Linux")
 clfs.append("Programming Language :: Python :: 3.5")
 
-setup(name="pywco", version="0.1.0", author="Lukas Tyrychtr", author_email="lukastyrychtr@gmail.com", url="https://www.github.com/tyrylu/pywco", packages=["pywco"], long_description=open("readme.md", "r").read(), description="Python based websockets communication helper.", license="MIT", classifiers=clfs, requires=["websockets", "blinker", "msgpack"])
+setup(name="pywco", version="0.1.0", author="Lukas Tyrychtr", author_email="lukastyrychtr@gmail.com", url="https://www.github.com/tyrylu/pywco", packages=["pywco"], long_description=open("README.md", "r").read(), description="Python based websockets communication helper.", license="MIT", classifiers=clfs, requires=["websockets", "blinker", "msgpack"])
