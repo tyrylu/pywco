@@ -92,6 +92,12 @@ class Server(Communicator):
         """The client id corresponding to the currently processed message, e. g. client id of the sender."""
         return self._cur_client_id
 
+    async def kick_client_async(self, client_id, reason=""):
+        await self.clients[client_id].close(1008, reason or "You have been kicked out.")
+        del self.clients[client_id]
+
+    def kick_client(self, client_id, reason=""):
+        self.loop.create_task(self.kick_client_async(client_id, reason))
 
 class Wrap:
     
