@@ -42,7 +42,7 @@ class Client(Communicator):
             self.send_queue.async_q.task_done()
         except websockets.exceptions.ConnectionClosed as ex:
             self.stop()
-            connnection_lost.send(self, exception=ex)
+            connection_lost.send(self, exception=ex)
 
     async def consumer_handler(self):
         try:
