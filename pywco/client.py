@@ -53,18 +53,18 @@ class Client(Communicator):
             connection_lost.send(self, exception=ex)
     
     def stop(self):
-        self.loop.call_soon_threadsafe(self.do_stop)
+        self.loop.call_soon_threadsafe(self._stop2)
 
-    def do_stop(self):
+    def _stop2(self):
         self.stopping = True
-        self.loop.create_task(self.stop_async()).add_done_callback(self.stop_phase_2)
-        
-    def stop_phase_2(self, result):
-        self.producer_task.cancel()
-        self.consumer_task.cancel()
-        self.loop.stop()
+        self.loop.create_task(self._stop3()).add_done_callback(self._stop_final)
 
-    async def stop_async(self):
+    async def _stop3(self):
         await self.websocket.close()
         self.send_queue.close()
         await self.send_queue.wait_closed()
+
+    def _stop_final(self, result):
+        self.producer_task.cancel()
+        self.consumer_task.cancel()
+        self.loop.stop()
