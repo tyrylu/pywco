@@ -21,6 +21,7 @@ class Communicator:
             raise RuntimeError("No instance running")
 
     def __init__(self, address, port, known_commands):
+        self.stop_sync_event = threading.Event()
         self.address = address
         self.port = port
 
