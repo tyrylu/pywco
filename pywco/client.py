@@ -13,6 +13,7 @@ from .communicator import Communicator
 log = logging.getLogger(__name__)
 
 connection_lost = blinker.Signal()
+client_stopped = blinker.Signal()
 
 class Client(Communicator):
    
@@ -52,12 +53,8 @@ class Client(Communicator):
             self.stop()
             connection_lost.send(self, exception=ex)
     
-    def stop(self, blocking=True):
-        if blocking:
-            self.stop_sync_event.clear()
+    def stop(self):
         self.loop.call_soon_threadsafe(self._stop2)
-        if blocking:
-            self.stop_sync_event.wait()
 
     def _stop2(self):
         self.stopping = True
@@ -72,4 +69,4 @@ class Client(Communicator):
         self.producer_task.cancel()
         self.consumer_task.cancel()
         self.loop.stop()
-        self.stop_sync_event.set()
+        client_stopped.send(self)
