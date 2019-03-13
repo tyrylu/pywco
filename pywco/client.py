@@ -15,13 +15,9 @@ log = logging.getLogger(__name__)
 connection_lost = blinker.Signal()
 client_stopped = blinker.Signal()
 
+
 class Client(Communicator):
-   
-    def start_communication(self):
-        self.stopping = False
-        self.communication_task = self.loop.create_task(self.start_async_communication())
-        self.loop.run_forever()
-    
+
     async def start_async_communication(self):
         self.websocket = await websockets.connect(f"ws://{self.address}:{self.port}")
         while not self.stopping:
@@ -52,21 +48,12 @@ class Client(Communicator):
         except websockets.exceptions.ConnectionClosed as ex:
             self.stop()
             connection_lost.send(self, exception=ex)
-    
-    def stop(self):
-        self.loop.call_soon_threadsafe(self._stop2)
 
-    def _stop2(self):
-        self.stopping = True
-        self.loop.create_task(self._stop3()).add_done_callback(self._stop_final)
-
-    async def _stop3(self):
-        await self.websocket.close()
+    async def _stop_3(self):
+        await self.websocket.close(code=1001)
         self.send_queue.close()
         await self.send_queue.wait_closed()
 
-    def _stop_final(self, result):
-        self.producer_task.cancel()
-        self.consumer_task.cancel()
-        self.loop.stop()
+    def _stop_final(self):
+        self.communication_thread.join()
         client_stopped.send(self)

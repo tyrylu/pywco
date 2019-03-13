@@ -9,18 +9,12 @@ from blinker import signal
 
 
 log = logging.getLogger(__name__)
+
+
 class Communicator:
 
-    instance = None
-
-    @classmethod
-    def get_instance(cls):
-        if cls.instance:
-            return cls.instance
-        else:
-            raise RuntimeError("No instance running")
-
     def __init__(self, address, port, known_commands):
+        self.stopping = False
         self.address = address
         self.port = port
 
@@ -34,8 +28,7 @@ class Communicator:
         self.send_queue = janus.Queue(loop=self.loop)
         self.communication_thread = threading.Thread(target=self.start_communication)
         self.communication_thread.start()
-        Communicator.instance = self
-    
+
     def start_communication(self):
         self.communication_task = self.loop.create_task(self.start_async_communication())
         self.loop.run_forever()
@@ -64,6 +57,24 @@ class Communicator:
 
         message["pywco_command"] = command
         return message
+
+    def stop(self):
+        self.loop.call_soon_threadsafe(self._stop_2)
+
+    def _stop_2(self):
+        self.stopping = True
+        self.loop.create_task(self._stop_3()).add_done_callback(self._stop_4)
+
+    @abc.abstractmethod
+    def _stop_3(self): pass
+
+    def _stop_4(self, result):
+        self.loop.stop()
+        thread = threading.Thread(target=self._stop_final)
+        thread.start()
+
+    @abc.abstractmethod
+    def _stop_final(self): pass
 
     @abc.abstractmethod
     async def start_async_communication(self): pass
