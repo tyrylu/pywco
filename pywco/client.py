@@ -1,8 +1,11 @@
 import asyncio
+import threading
+import time
 import websockets
 import websockets.exceptions
 import logging
 import msgpack
+import janus
 import blinker
 
 from .communicator import Communicator
@@ -10,16 +13,11 @@ from .communicator import Communicator
 log = logging.getLogger(__name__)
 
 connection_lost = blinker.Signal()
-kicked = blinker.Signal()
+client_stopped = blinker.Signal()
+
 
 class Client(Communicator):
-   
-    def start_communication(self):
-        self.stopping = False
-        self.communication_task = self.loop.create_task(self.start_async_communication())
-        connection_lost.connect(check_for_kick)
-        self.loop.run_forever()
-    
+
     async def start_async_communication(self):
         self.websocket = await websockets.connect(f"ws://{self.address}:{self.port}")
         while not self.stopping:
@@ -50,24 +48,12 @@ class Client(Communicator):
         except websockets.exceptions.ConnectionClosed as ex:
             self.stop()
             connection_lost.send(self, exception=ex)
-    
-    def stop(self):
-        self.loop.call_soon_threadsafe(self.do_stop)
 
-    def do_stop(self):
-        self.stopping = True
-        self.loop.create_task(self.stop_async()).add_done_callback(self.stop_phase_2)
-        
-    def stop_phase_2(self, result):
-        self.producer_task.cancel()
-        self.consumer_task.cancel()
-        self.loop.stop()
-
-    async def stop_async(self):
-        await self.websocket.close()
+    async def _stop_3(self):
+        await self.websocket.close(code=1001)
         self.send_queue.close()
         await self.send_queue.wait_closed()
 
-def check_for_kick(sender, exception):
-    if exception.code == 1008:
-        kicked.send(sender, reason=exception.reason)
+    def _stop_final(self):
+        self.communication_thread.join()
+        client_stopped.send(self)
