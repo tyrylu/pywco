@@ -27,7 +27,10 @@ class Communicator:
         self.loop = asyncio.new_event_loop()
         self.send_queue = janus.Queue(loop=self.loop)
         self.communication_thread = threading.Thread(target=self.start_communication)
+
+    def start(self):
         self.communication_thread.start()
+        return self
 
     def start_communication(self):
         self.communication_task = self.loop.create_task(self.start_async_communication())

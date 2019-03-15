@@ -22,7 +22,7 @@ blinker.signal(MsgType.Foo).connect(my_handler)
 And creating instance should work like this
 
 ```
-pywco_instance = pywco.Client("localhost", 42424, MsgType)
+pywco_instance = pywco.Client("localhost", 42424, MsgType).run()
 ```
 
 MsgType is an Enum which pywco expects you to provide.

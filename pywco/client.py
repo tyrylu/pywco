@@ -14,12 +14,14 @@ log = logging.getLogger(__name__)
 
 connection_lost = blinker.Signal()
 client_stopped = blinker.Signal()
+connected = blinker.Signal()
 
 
 class Client(Communicator):
 
     async def start_async_communication(self):
         self.websocket = await websockets.connect(f"ws://{self.address}:{self.port}")
+        client_connected.send(self)
         while not self.stopping:
             self.consumer_task = self.loop.create_task(self.consumer_handler())
             self.producer_task = self.loop.create_task(self.producer_handler())
