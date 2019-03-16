@@ -17,6 +17,8 @@ class Communicator:
         self.stopping = False
         self.address = address
         self.port = port
+        self.producer_task = None
+        self.consumer_task = None
 
         if issubclass(known_commands, Enum):
             self.known_commands = known_commands
@@ -72,6 +74,8 @@ class Communicator:
     def _stop_3(self): pass
 
     def _stop_4(self, result):
+        self.consumer_task.cancel()
+        self.producer_task.cancel()
         self.loop.stop()
         thread = threading.Thread(target=self._stop_final)
         thread.start()

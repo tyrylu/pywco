@@ -37,10 +37,10 @@ class Server(Communicator):
                 self.handle_client_disconnect(client_id, False)
                 client_disconnected.send(self, client_id=client_id, abnormal=False)
                 break
-            consumer_task = self.loop.create_task(self.consumer_handler(websocket, path, client_id))
-            producer_task = self.loop.create_task(self.producer_handler(client_id))
+            self.consumer_task = self.loop.create_task(self.consumer_handler(websocket, path, client_id))
+            self.producer_task = self.loop.create_task(self.producer_handler(client_id))
             try:
-                done, pending = await asyncio.wait([consumer_task, producer_task], return_when=asyncio.FIRST_COMPLETED)
+                done, pending = await asyncio.wait([self.consumer_task, self.producer_task], return_when=asyncio.FIRST_COMPLETED)
                 for future in done:
                     future.result()
             except websockets.ConnectionClosed as exc:
