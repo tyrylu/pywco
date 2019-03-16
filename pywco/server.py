@@ -107,8 +107,8 @@ class Server(Communicator):
         return self._cur_client_id
 
     async def kick_client_async(self, client_id, reason=""):
+        # Note that the client gets deleted by the normal client disconnection logic.
         await self.clients[client_id].close(1008, reason or "You have been kicked out.")
-        del self.clients[client_id]
 
     def kick_client(self, client_id, reason=""):
         self.loop.create_task(self.kick_client_async(client_id, reason))
