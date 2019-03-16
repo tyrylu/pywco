@@ -20,7 +20,8 @@ connected = blinker.Signal()
 class Client(Communicator):
 
     async def start_async_communication(self):
-        self.websocket = await websockets.connect(f"ws://{self.address}:{self.port}")
+        protocol = "wss" if self._ssl else "ws"
+        self.websocket = await websockets.connect(f"{protocol}://{self.address}:{self.port}", ssl=self._ssl)
         connected.send(self)
         while not self.stopping:
             self.consumer_task = self.loop.create_task(self.consumer_handler())

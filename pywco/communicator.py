@@ -13,10 +13,11 @@ log = logging.getLogger(__name__)
 
 class Communicator:
 
-    def __init__(self, address, port, known_commands):
+    def __init__(self, address, port, known_commands, ssl=None):
         self.stopping = False
         self.address = address
         self.port = port
+        self._ssl = ssl
         self.producer_task = None
         self.consumer_task = None
 

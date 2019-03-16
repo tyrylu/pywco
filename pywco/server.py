@@ -17,15 +17,15 @@ server_stopped = blinker.Signal()
 
 class Server(Communicator):
     
-    def __init__(self, address, port, known_commands):
-        super().__init__(address, port, known_commands)
+    def __init__(self, address, port, known_commands, ssl=None):
+        super().__init__(address, port, known_commands, ssl)
         self.clients = {}
         self._rng = random.SystemRandom()
         self._cur_client_id = None
         self.server = None
 
     async def start_async_communication(self):
-        self.server = await websockets.serve(self.handler, self.address, self.port, loop=self.loop)
+        self.server = await websockets.serve(self.handler, self.address, self.port, loop=self.loop, ssl=self._ssl)
 
     async def handler(self, websocket, path):
         client_id = self._rng.randint(0, 2**64) # Because of the birthday paradox we expect a collision in 2**32 attempts, but that should be fine.
