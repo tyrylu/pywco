@@ -111,7 +111,7 @@ class Server(Communicator):
     def handle_client_disconnect(self, pywco_client_id, abnormal):
         del self.clients[pywco_client_id]
         if pywco_client_id in self._broadcast_blacklist:
-            del self._broadcast_blacklist[pywco_client_id]
+            self._broadcast_blacklist.remove(pywco_client_id)
 
     async def _stop_3(self):
         self.server.close()
