@@ -45,21 +45,19 @@ class Communicator:
     def encode_command(self, value):
         return value.value
 
-    def handle_message(self, message):
+    def decode_message(self, message):
         received = msgpack.unpackb(message, encoding="utf-8")
         command = self.known_commands(received["pywco_command"])
         if command not in self.known_commands:
             log.warning(f"This command is not known {command}")
             return
         del received["pywco_command"]
-        try:
-            signal(command).send(self, **received)
-        except Exception as e:
-            log.exception(f"Error handling the {command} command.")
+        return command, received
 
-    def _add_command_to_message(self, command, message):
-        if "pywco_command" in message:
-            raise AttributeError("pywco_command is reserved for pywco. Please use a different name.")
+    def _add_command_and_verify_message(self, command, message):
+        for key in message.keys():
+            if key.startswith("pywco_"):
+                raise AttributeError(f"{key} and the whole pywco prefix is reserved. Please use a different name.")
 
         message["pywco_command"] = command
         return message
@@ -75,8 +73,6 @@ class Communicator:
     def _stop_3(self): pass
 
     def _stop_4(self, result):
-        self.consumer_task.cancel()
-        self.producer_task.cancel()
         self.loop.stop()
         thread = threading.Thread(target=self._stop_final)
         thread.start()

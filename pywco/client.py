@@ -7,6 +7,7 @@ import logging
 import msgpack
 import janus
 import blinker
+from blinker import signal
 
 from .communicator import Communicator
 
@@ -31,14 +32,14 @@ class Client(Communicator):
                 task.cancel()
 
     def send_message(self, command, **message):
-        self._add_command_to_message(command, message)
+        self._add_command_and_verify_message(command, message)
         self.send_queue.sync_q.put(message)
 
     async def producer_handler(self):
         message = await self.send_queue.async_q.get()
         message_string = msgpack.packb(message, default=self.encode_command, use_bin_type=True)
         try:
-            await self.websocket.send(message_string)        
+            await self.websocket.send(message_string)
             self.send_queue.async_q.task_done()
         except websockets.exceptions.ConnectionClosed as ex:
             self.stop()
@@ -47,15 +48,25 @@ class Client(Communicator):
     async def consumer_handler(self):
         try:
             async for received_string in self.websocket:
-                self.handle_message(received_string)
+                self.handle_client_message(received_string)
         except websockets.exceptions.ConnectionClosed as ex:
             self.stop()
             connection_lost.send(self, exception=ex)
+
+
+    def handle_client_message(self, message):
+        command, received = self.decode_message(message)
+        try:
+            signal(command).send(self, **received)
+        except Exception as e:
+            log.exception(f"Error handling the {command} command.")
 
     async def _stop_3(self):
         await self.websocket.close(code=1001)
         self.send_queue.close()
         await self.send_queue.wait_closed()
+        self.consumer_task.cancel()
+        self.producer_task.cancel()
 
     def _stop_final(self):
         self.communication_thread.join()
