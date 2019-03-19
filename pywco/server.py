@@ -23,6 +23,7 @@ class Server(Communicator):
         self.clients = {}
         self._rng = random.SystemRandom()
         self._cur_client_id = None
+        self._broadcast_blacklist = set()
         self.server = None
 
     async def start_async_communication(self):
@@ -67,6 +68,12 @@ class Server(Communicator):
         wrap = Wrap(True, None, message)
         self.send_queue.sync_q.put(wrap)
 
+    def add_to_broadcast_blacklist(self, pywco_client_id):
+        self._broadcast_blacklist.add(pywco_client_id)
+
+    def remove_from_broadcast_blacklist(self, pywco_client_id):
+        self._broadcast_blacklist.remove(pywco_client_id)
+
     def get_clients(self):
         return self.clients
 
@@ -77,7 +84,7 @@ class Server(Communicator):
         wrap = await self.send_queue.async_q.get()
         message_string = msgpack.packb(wrap.message, default=self.encode_command, use_bin_type=True)
         if wrap.broadcast:
-            await asyncio.wait([self.send(message_string, pywco_client_id) for pywco_client_id in self.clients.keys()])
+            await asyncio.wait([self.send(message_string, pywco_client_id) for pywco_client_id in self.clients.keys() if pywco_client_id not in self._broadcast_blacklist])
         else:
             await self.send(message_string, wrap.pywco_client_id)
 
@@ -103,6 +110,8 @@ class Server(Communicator):
 
     def handle_client_disconnect(self, pywco_client_id, abnormal):
         del self.clients[pywco_client_id]
+        if pywco_client_id in self._broadcast_blacklist:
+            del self._broadcast_blacklist[pywco_client_id]
 
     async def _stop_3(self):
         self.server.close()
