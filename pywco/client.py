@@ -41,7 +41,7 @@ class Client(Communicator):
         try:
             message_string = msgpack.packb(message, default=self.encode_command, use_bin_type=True)
         except TypeError as exc:
-            log.error("Failed to serialize the message %s, error was %s, call stack at time of message queueing was %s.", message, exc, caller_stack)
+            log.error("Failed to serialize the message %s, error was %s, call stack at time of message queueing was %s.", message, exc, "\n".join(caller_stack))
             self.stop()
         try:
             await self.websocket.send(message_string)

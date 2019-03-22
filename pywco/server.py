@@ -84,7 +84,7 @@ class Server(Communicator):
         try:
             message_string = msgpack.packb(wrap.message, default=self.encode_command, use_bin_type=True)
         except TypeError as exc:
-            log.error("Failed to serialize the message %s, error was %s, call stack at time of message queueing was %s.", wrap.message, exc, wrap.caller_stack)
+            log.error("Failed to serialize the message %s, error was %s, call stack at time of message queueing was %s.", wrap.message, exc, "\n".join(wrap.caller_stack))
             self.kick_client(self.current_client_id, 1011)
             return
         if wrap.broadcast:
