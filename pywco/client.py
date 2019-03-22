@@ -4,6 +4,7 @@ import time
 import websockets
 import websockets.exceptions
 import logging
+import traceback
 import msgpack
 import janus
 import blinker
@@ -33,11 +34,15 @@ class Client(Communicator):
 
     def send_message(self, command, **message):
         self._add_command_and_verify_message(command, message)
-        self.send_queue.sync_q.put(message)
+        self.send_queue.sync_q.put((message, traceback.format_stack()))
 
     async def producer_handler(self):
-        message = await self.send_queue.async_q.get()
-        message_string = msgpack.packb(message, default=self.encode_command, use_bin_type=True)
+        message, caller_stack = await self.send_queue.async_q.get()
+        try:
+            message_string = msgpack.packb(message, default=self.encode_command, use_bin_type=True)
+        except TypeError as exc:
+            log.error("Failed to serialize the message %s, error was %s, call stack at time of message queueing was %s.", message, exc, caller_stack)
+            self.stop()
         try:
             await self.websocket.send(message_string)
             self.send_queue.async_q.task_done()

@@ -2,6 +2,7 @@ import asyncio
 import logging
 import random
 import threading
+import traceback
 
 import websockets
 import msgpack
@@ -54,18 +55,16 @@ class Server(Communicator):
                 task.cancel()
 
     def answer(self, command, **message):
-        self._add_command_and_verify_message(command, message)
-        wrap = Wrap(False, self._cur_client_id, message)
-        self.send_queue.sync_q.put(wrap)
+        self.send_message(command, self.current_client_id, **message)
 
     def send_message(self, command, pywco_client_id, **message):
         self._add_command_and_verify_message(command, message)
-        wrap = Wrap(False, pywco_client_id, message)
+        wrap = Wrap(False, pywco_client_id, message, traceback.format_stack())
         self.send_queue.sync_q.put(wrap)
 
     def broadcast(self, command, **message):
         self._add_command_and_verify_message(command, message)
-        wrap = Wrap(True, None, message)
+        wrap = Wrap(True, None, message, traceback.format_stack())
         self.send_queue.sync_q.put(wrap)
 
     def add_to_broadcast_blacklist(self, pywco_client_id):
@@ -82,7 +81,12 @@ class Server(Communicator):
 
     async def producer_handler(self, pywco_client_id):
         wrap = await self.send_queue.async_q.get()
-        message_string = msgpack.packb(wrap.message, default=self.encode_command, use_bin_type=True)
+        try:
+            message_string = msgpack.packb(wrap.message, default=self.encode_command, use_bin_type=True)
+        except TypeError as exc:
+            log.error("Failed to serialize the message %s, error was %s, call stack at time of message queueing was %s.", wrap.message, exc, wrap.caller_stack)
+            self.kick_client(self.current_client_id, 1011)
+            return
         if wrap.broadcast:
             await asyncio.wait([self.send(message_string, pywco_client_id) for pywco_client_id in self.clients.keys() if pywco_client_id not in self._broadcast_blacklist])
         else:
@@ -142,7 +146,8 @@ class Server(Communicator):
 
 class Wrap:
     
-    def __init__(self, broadcast, pywco_client_id, message):
+    def __init__(self, broadcast, pywco_client_id, message, caller_stack):
         self.broadcast = broadcast
         self.pywco_client_id = pywco_client_id
         self.message = message
+        self.caller_stack = caller_stack
