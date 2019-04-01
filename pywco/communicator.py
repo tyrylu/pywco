@@ -14,6 +14,7 @@ log = logging.getLogger(__name__)
 class Communicator:
 
     def __init__(self, address, port, known_commands, ssl=None):
+        log.debug(f"Instancing pywco with address {address}:{port}")
         self.stopping = False
         self.address = address
         self.port = port
