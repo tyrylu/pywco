@@ -5,8 +5,6 @@ import threading
 import abc
 import logging
 import janus
-from blinker import signal
-
 
 log = logging.getLogger(__name__)
 

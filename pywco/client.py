@@ -1,12 +1,9 @@
 import asyncio
-import threading
-import time
 import websockets
 import websockets.exceptions
 import logging
 import traceback
 import msgpack
-import janus
 import blinker
 from blinker import signal
 
