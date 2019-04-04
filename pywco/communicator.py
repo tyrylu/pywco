@@ -13,12 +13,13 @@ log = logging.getLogger(__name__)
 
 class Communicator:
 
-    def __init__(self, address, port, known_commands, ssl=None):
+    def __init__(self, address, port, known_commands, ssl=None, timeout=10):
         log.debug(f"Instancing pywco with address {address}:{port}")
         self.stopping = False
         self.address = address
         self.port = port
         self._ssl = ssl
+        self._timeout = timeout
         self.producer_task = None
         self.consumer_task = None
 

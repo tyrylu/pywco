@@ -17,13 +17,18 @@ log = logging.getLogger(__name__)
 connection_lost = blinker.Signal()
 client_stopped = blinker.Signal()
 connected = blinker.Signal()
+connect_failed = blinker.Signal()
 
 
 class Client(Communicator):
 
     async def start_async_communication(self):
         protocol = "wss" if self._ssl else "ws"
-        self.websocket = await websockets.connect(f"{protocol}://{self.address}:{self.port}", ssl=self._ssl)
+        try:
+            self.websocket = await websockets.connect(f"{protocol}://{self.address}:{self.port}", ssl=self._ssl, timeout=self._timeout)
+        except Exception as exc:
+            connect_failed.send(self, exception=exc)
+            return
         connected.send(self)
         while not self.stopping:
             self.consumer_task = self.loop.create_task(self.consumer_handler())
