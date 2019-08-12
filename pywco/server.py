@@ -2,6 +2,7 @@ import asyncio
 import logging
 import random
 import traceback
+import collections
 
 import websockets
 import msgpack
@@ -23,7 +24,7 @@ class Server(Communicator):
         self.clients = {}
         self._rng = random.SystemRandom()
         self._cur_client_id = None
-        self._broadcast_blacklist = set()
+        self._client_groups = collections.defaultdict(set)
         self.server = None
 
     async def start_async_communication(self):
@@ -32,6 +33,7 @@ class Server(Communicator):
     async def handler(self, websocket, path):
         pywco_client_id = self._rng.randint(0, 2**64) # Because of the birthday paradox we expect a collision in 2**32 attempts, but that should be fine.
         self.clients[pywco_client_id] = websocket
+        self.add_to_clients_group(pywco_client_id, "EVERYONE")
         client_connected.send(self, pywco_client_id=pywco_client_id)
         is_connected = True
         while is_connected and not self.stopping:
@@ -63,17 +65,26 @@ class Server(Communicator):
 
     def broadcast(self, command, **message):
         self._add_command_and_verify_message(command, message)
-        wrap = Wrap(True, None, message, traceback.format_stack())
+        wrap = Wrap("EVERYONE", None, message, traceback.format_stack())
         self.send_queue.sync_q.put(wrap)
 
-    def add_to_broadcast_blacklist(self, pywco_client_id):
-        self._broadcast_blacklist.add(pywco_client_id)
+    def broadcast_to_group(self, group_name, command, **message):
+        self._add_command_and_verify_message(command, message)
+        wrap = Wrap(group_name, None, message, traceback.format_stack())
+        self.send_queue.sync_q.put(wrap)
+    
+        
+    def add_to_clients_group(self, pywco_client_id, group_name):
+        self._client_groups[group_name].add(pywco_client_id)
 
-    def remove_from_broadcast_blacklist(self, pywco_client_id):
-        self._broadcast_blacklist.remove(pywco_client_id)
+    def remove_from_clients_group(self, pywco_client_id, group_name):
+        self._client_groups[group_name].remove(pywco_client_id)
 
     def get_clients(self):
         return self.clients
+
+    def get_clients_in_group(self, group_name):
+        return self._client_groups[group_name]
 
     async def send(self, message, pywco_client_id):
         await self.clients[pywco_client_id].send(message)
@@ -86,8 +97,8 @@ class Server(Communicator):
             log.error("Failed to serialize the message %s, error was %s, call stack at time of message queueing was %s.", wrap.message, exc, "\n".join(wrap.caller_stack))
             self.kick_client(self.current_client_id, 1011)
             return
-        if wrap.broadcast:
-            await asyncio.wait([self.send(message_string, pywco_client_id) for pywco_client_id in self.clients.keys() if pywco_client_id not in self._broadcast_blacklist])
+        if wrap.clients_group:
+            await asyncio.wait([self.send(message_string, pywco_client_id) for pywco_client_id in self._client_groups[wrap.clients_group]])
         else:
             await self.send(message_string, wrap.pywco_client_id)
 
@@ -103,7 +114,7 @@ class Server(Communicator):
         try:
             command, received = self.decode_message(message)
         except Exception as e:
-            log.exception(f"Error decoding an incoming message.")
+            log.exception("Error decoding an incoming message.")
             return
         received["pywco_client_id"] = pywco_client_id
         try:
@@ -113,9 +124,10 @@ class Server(Communicator):
 
     def handle_client_disconnect(self, pywco_client_id, abnormal):
         del self.clients[pywco_client_id]
-        if pywco_client_id in self._broadcast_blacklist:
-            self._broadcast_blacklist.remove(pywco_client_id)
-
+        for group in self._client_groups:
+            if pywco_client_id in group:
+                group.remove(pywco_client_id)
+        
     async def _stop_3(self):
         self.server.close()
         await self.server.wait_closed()
@@ -145,8 +157,8 @@ class Server(Communicator):
 
 class Wrap:
     
-    def __init__(self, broadcast, pywco_client_id, message, caller_stack):
-        self.broadcast = broadcast
+    def __init__(self, clients_group, pywco_client_id, message, caller_stack):
+        self.clients_group = clients_group
         self.pywco_client_id = pywco_client_id
         self.message = message
         self.caller_stack = caller_stack
