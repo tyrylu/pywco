@@ -124,7 +124,7 @@ class Server(Communicator):
 
     def handle_client_disconnect(self, pywco_client_id, abnormal):
         del self.clients[pywco_client_id]
-        for group in self._client_groups:
+        for group in self._client_groups.values():
             if pywco_client_id in group:
                 group.remove(pywco_client_id)
         
